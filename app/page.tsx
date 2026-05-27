@@ -252,23 +252,47 @@ export default function Photobooth() {
         
         {/* --- STEP 1: HOME --- */}
         {step === 'home' && (
-          <div className="text-center flex flex-col items-center animate-fade-in-up backdrop-blur-md p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-white/50 shadow-2xl bg-white/40 w-full max-w-3xl">
-            <div className="inline-block px-4 py-1.5 sm:px-5 sm:py-2 mb-4 sm:mb-6 rounded-full bg-blue-600 text-white font-black text-[10px] sm:text-xs tracking-[0.2em] shadow-lg shadow-blue-600/30">
-              @hadistyyy || on insta
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16 w-full animate-fade-in-up backdrop-blur-md p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-white/50 shadow-2xl bg-white/40">
+            
+            {/* Bagian Kiri: Teks & Tombol */}
+            <div className="text-center lg:text-left flex flex-col items-center lg:items-start w-full lg:w-1/2">
+              <div className="inline-block px-4 py-1.5 sm:px-5 sm:py-2 mb-4 sm:mb-6 rounded-full bg-blue-600 text-white font-black text-[10px] sm:text-xs tracking-[0.1em] sm:tracking-[0.2em] shadow-lg shadow-blue-600/30 uppercase">
+                @hadistyyy || on insta
+              </div>
+              <h1 className="text-5xl sm:text-7xl lg:text-8xl xl:text-9xl font-black mb-4 sm:mb-6 tracking-tighter text-slate-900 drop-shadow-sm">
+                BlueBooth<span className="text-blue-600">.</span>
+              </h1>
+              <p className="mb-8 sm:mb-10 text-sm sm:text-xl lg:text-2xl text-slate-600 font-medium max-w-xl">
+                cekrak cekrek mana ur imup kamu
+              </p>
+              <button 
+                onClick={() => setStep('setup')}
+                className="w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg bg-blue-600 text-white rounded-full font-black hover:bg-blue-700 hover:scale-105 transition-all shadow-2xl shadow-blue-600/40 flex items-center justify-center gap-3"
+              >
+                Start Session 📸
+              </button>
             </div>
-            {/* Teks Judul Disesuaikan: text-5xl di HP, membesar di Desktop */}
-            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black mb-4 sm:mb-6 tracking-tighter text-slate-900 drop-shadow-sm">
-              BlueBooth<span className="text-blue-600">.</span>
-            </h1>
-            <p className="mb-8 sm:mb-12 text-sm sm:text-xl md:text-2xl text-slate-600 font-medium max-w-xl px-2">
-              cekrak cekrek mana ur imup kamu
-            </p>
-            <button 
-              onClick={() => setStep('setup')}
-              className="w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg bg-blue-600 text-white rounded-full font-black hover:bg-blue-700 hover:scale-105 transition-all shadow-2xl shadow-blue-600/40 flex items-center justify-center gap-3"
-            >
-              Start Session 📸
-            </button>
+
+            {/* Bagian Kanan: Showcase Gambar Lu */}
+            <div className="relative flex justify-center w-full lg:w-1/2 mt-8 lg:mt-0">
+              <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-2xl transform rotate-6 scale-105"></div>
+              
+              <div className="relative group">
+                <img 
+                  src="/jaki.jpeg" 
+                  alt="Hasil BlueBooth" 
+                  className="w-[240px] sm:w-[320px] rounded-xl sm:rounded-2xl shadow-2xl transform -rotate-3 group-hover:rotate-0 transition-transform duration-500 border-[6px] border-slate-900"
+                />
+                
+                <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 text-4xl sm:text-5xl animate-bounce drop-shadow-lg">
+                  ✨
+                </div>
+                <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 text-3xl sm:text-4xl drop-shadow-lg rotate-12">
+                  🎀
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
