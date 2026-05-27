@@ -38,15 +38,14 @@ export default function Photobooth() {
   const [isShooting, setIsShooting] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
   
-  // State Baru & Ultimate Features
   const [layoutCount, setLayoutCount] = useState<3 | 4>(3);
   const [activeColor, setActiveColor] = useState(FRAME_COLORS[0]);
   const [activeFilter, setActiveFilter] = useState(PHOTO_FILTERS[0]);
   const [activeSticker, setActiveSticker] = useState(STICKER_PACKS[0]);
   const [customTitle, setCustomTitle] = useState('BLUEBOOTH');
   const [facingMode, setFacingMode] = useState<CameraFacing>('user'); 
+  const [isSharing, setIsSharing] = useState(false);
 
-  // Audio Digital
   const playShutterSound = useCallback(() => {
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -141,10 +140,10 @@ export default function Photobooth() {
     setStep('result');
   };
 
-  const downloadPhotostrip = async () => {
+  const drawFinalCanvas = async (): Promise<HTMLCanvasElement | null> => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) return null;
 
     const imgWidth = 1280; 
     const imgHeight = 720;
@@ -177,18 +176,14 @@ export default function Photobooth() {
       ctx.strokeRect(padding, yPos, imgWidth, imgHeight);
       ctx.globalAlpha = 1.0;
 
-      // Render Stiker (Kiri & Kanan Foto)
       if (activeSticker.emojis.length > 0) {
         ctx.font = '80px Arial';
         ctx.textAlign = 'center';
-        // Kiri
         ctx.fillText(activeSticker.emojis[index % activeSticker.emojis.length], padding / 2, yPos + 100);
-        // Kanan
         ctx.fillText(activeSticker.emojis[(index + 1) % activeSticker.emojis.length], canvas.width - (padding / 2), yPos + imgHeight - 100);
       }
     });
 
-    // Custom Watermark
     ctx.fillStyle = activeColor.text;
     ctx.font = 'bold 80px "Inter", sans-serif';
     ctx.textAlign = 'center';
@@ -199,41 +194,78 @@ export default function Photobooth() {
     ctx.fillText('2026', canvas.width / 2, canvas.height - 80);
     ctx.globalAlpha = 1.0;
 
+    return canvas;
+  };
+
+  const downloadPhotostrip = async () => {
+    const canvas = await drawFinalCanvas();
+    if (!canvas) return;
     const link = document.createElement('a');
     link.download = `${customTitle || 'photostrip'}-${Date.now()}.png`;
     link.href = canvas.toDataURL('image/png', 1.0);
     link.click();
   };
 
-  return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-center p-4 font-sans text-slate-900 transition-colors duration-500 overflow-hidden relative selection:bg-blue-600 selection:text-white">
-      
-      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-600 rounded-full filter blur-[120px] opacity-20 animate-pulse pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-indigo-600 rounded-full filter blur-[120px] opacity-20 pointer-events-none" />
+  const sharePhotostrip = async () => {
+    setIsSharing(true);
+    try {
+      const canvas = await drawFinalCanvas();
+      if (!canvas) return;
 
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], `bluebooth-${Date.now()}.png`, { type: 'image/png' });
+        
+        if (navigator.share) {
+          await navigator.share({
+            title: 'My Photostrip',
+            text: 'Hasil BlueBooth! ✨',
+            files: [file],
+          });
+        } else {
+          alert('Device kamu belum support fitur Share langsung. Download aja ya!');
+        }
+        setIsSharing(false);
+      }, 'image/png');
+    } catch (error) {
+      console.error("Gagal share:", error);
+      setIsSharing(false);
+    }
+  };
+
+  return (
+    <main className="min-h-[100dvh] bg-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans text-slate-900 transition-colors duration-500 overflow-x-hidden relative selection:bg-blue-600 selection:text-white">
+      
+      {/* Background Ornamen Tetap Responsif */}
+      <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-blue-600 rounded-full filter blur-[80px] md:blur-[120px] opacity-20 animate-pulse pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-indigo-600 rounded-full filter blur-[80px] md:blur-[120px] opacity-20 pointer-events-none" />
+
+      {/* Header Mobile - Menyesuaikan margin */}
       {step !== 'home' && (
-        <div className="absolute top-6 w-full text-center z-10">
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">BLUEBOOTH<span className="text-blue-600">.</span></h1>
+        <div className="absolute top-4 sm:top-6 w-full text-center z-10">
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">BLUEBOOTH<span className="text-blue-600">.</span></h1>
         </div>
       )}
 
-      <div className="w-full max-w-6xl flex justify-center items-center mt-12 z-10">
+      {/* Kontainer Utama - Responsive margin-top */}
+      <div className="w-full max-w-6xl flex justify-center items-center mt-12 sm:mt-16 z-10">
         
         {/* --- STEP 1: HOME --- */}
         {step === 'home' && (
-          <div className="text-center flex flex-col items-center animate-fade-in-up backdrop-blur-md p-10 rounded-[3rem] border border-white/50 shadow-2xl bg-white/40">
-            <div className="inline-block px-5 py-2 mb-6 rounded-full bg-blue-600 text-white font-black text-xs tracking-[0.2em] shadow-lg shadow-blue-600/30">
-              ULTIMATE EDITION
+          <div className="text-center flex flex-col items-center animate-fade-in-up backdrop-blur-md p-6 sm:p-10 rounded-[2rem] sm:rounded-[3rem] border border-white/50 shadow-2xl bg-white/40 w-full max-w-3xl">
+            <div className="inline-block px-4 py-1.5 sm:px-5 sm:py-2 mb-4 sm:mb-6 rounded-full bg-blue-600 text-white font-black text-[10px] sm:text-xs tracking-[0.2em] shadow-lg shadow-blue-600/30">
+              @hadistyyy || on insta
             </div>
-            <h1 className="text-7xl md:text-9xl font-black mb-6 tracking-tighter text-slate-900 drop-shadow-sm">
+            {/* Teks Judul Disesuaikan: text-5xl di HP, membesar di Desktop */}
+            <h1 className="text-5xl sm:text-7xl md:text-9xl font-black mb-4 sm:mb-6 tracking-tighter text-slate-900 drop-shadow-sm">
               BlueBooth<span className="text-blue-600">.</span>
             </h1>
-            <p className="mb-12 text-xl md:text-2xl text-slate-600 font-medium max-w-xl">
-              Pilih frame, pasang stiker aesthetic, dan ganti namamu sendiri di hasil photostrip-nya.
+            <p className="mb-8 sm:mb-12 text-sm sm:text-xl md:text-2xl text-slate-600 font-medium max-w-xl px-2">
+              cekrak cekrek mana ur imup kamu
             </p>
             <button 
               onClick={() => setStep('setup')}
-              className="px-10 py-5 text-lg bg-blue-600 text-white rounded-full font-black hover:bg-blue-700 hover:scale-105 transition-all shadow-2xl shadow-blue-600/40 flex items-center gap-3"
+              className="w-full sm:w-auto px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg bg-blue-600 text-white rounded-full font-black hover:bg-blue-700 hover:scale-105 transition-all shadow-2xl shadow-blue-600/40 flex items-center justify-center gap-3"
             >
               Start Session 📸
             </button>
@@ -242,32 +274,33 @@ export default function Photobooth() {
 
         {/* --- STEP 2: SETUP --- */}
         {step === 'setup' && (
-          <div className="bg-white/90 backdrop-blur-2xl p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-blue-100 w-full max-w-2xl animate-fade-in-up">
-            <h2 className="text-3xl font-black mb-8 text-slate-900 tracking-tight">Customize Session</h2>
+          <div className="bg-white/90 backdrop-blur-2xl p-6 sm:p-8 md:p-12 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-blue-100 w-full max-w-2xl animate-fade-in-up">
+            <h2 className="text-2xl sm:text-3xl font-black mb-6 sm:mb-8 text-slate-900 tracking-tight text-center sm:text-left">Customize Session</h2>
             
-            <div className="mb-8">
-              <span className="block text-xs font-black text-blue-600 mb-4 uppercase tracking-[0.15em]">1. Pilih Layout</span>
-              <div className="flex gap-4">
+            <div className="mb-6 sm:mb-8">
+              <span className="block text-[10px] sm:text-xs font-black text-blue-600 mb-3 sm:mb-4 uppercase tracking-[0.15em] text-center sm:text-left">1. Pilih Layout</span>
+              {/* Layout Button dibuat tumpuk di HP super kecil, jejer di tablet */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 {[3, 4].map((num) => (
                   <button 
                     key={num}
                     onClick={() => setLayoutCount(num as 3 | 4)}
-                    className={`flex-1 py-6 rounded-3xl border-[3px] transition-all flex flex-col items-center gap-3 ${layoutCount === num ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-inner' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
+                    className={`flex-1 py-4 sm:py-6 rounded-2xl sm:rounded-3xl border-[3px] transition-all flex flex-col items-center gap-3 ${layoutCount === num ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-inner' : 'border-slate-100 hover:border-blue-200 bg-white'}`}
                   >
-                    <span className="text-2xl font-black">{num} GRID</span>
+                    <span className="text-xl sm:text-2xl font-black">{num} GRID</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="mb-10">
-              <span className="block text-xs font-black text-blue-600 mb-4 uppercase tracking-[0.15em]">2. Pilih Filter Lensa</span>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="mb-8 sm:mb-10">
+              <span className="block text-[10px] sm:text-xs font-black text-blue-600 mb-3 sm:mb-4 uppercase tracking-[0.15em] text-center sm:text-left">2. Pilih Filter Lensa</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 {PHOTO_FILTERS.map((filter) => (
                   <button
                     key={filter.name}
                     onClick={() => setActiveFilter(filter)}
-                    className={`p-4 rounded-2xl border-[3px] text-sm font-bold transition-all ${activeFilter.name === filter.name ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'border-slate-100 bg-white text-slate-600 hover:border-blue-200'}`}
+                    className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border-[3px] text-xs sm:text-sm font-bold transition-all ${activeFilter.name === filter.name ? 'border-blue-600 bg-blue-600 text-white shadow-lg shadow-blue-600/30' : 'border-slate-100 bg-white text-slate-600 hover:border-blue-200'}`}
                   >
                     {filter.name}
                   </button>
@@ -275,13 +308,13 @@ export default function Photobooth() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-8 border-t border-slate-100">
-              <button onClick={() => setStep('home')} className="text-slate-400 font-bold hover:text-slate-800 transition">
+            <div className="flex flex-col-reverse sm:flex-row justify-between items-center pt-6 sm:pt-8 border-t border-slate-100 gap-4">
+              <button onClick={() => setStep('home')} className="text-slate-400 font-bold hover:text-slate-800 transition w-full sm:w-auto py-3">
                 Batal
               </button>
               <button 
                 onClick={() => setStep('camera')}
-                className="px-8 py-4 bg-slate-900 text-white rounded-full font-bold hover:bg-black transition shadow-xl"
+                className="w-full sm:w-auto px-8 py-3 sm:py-4 bg-slate-900 text-white rounded-full font-bold hover:bg-black transition shadow-xl"
               >
                 Buka Kamera ➡️
               </button>
@@ -291,36 +324,36 @@ export default function Photobooth() {
 
         {/* --- STEP 3: CAMERA --- */}
         {step === 'camera' && (
-          <div className="bg-white/90 backdrop-blur-2xl p-4 rounded-[2.5rem] shadow-2xl border border-blue-50 w-full max-w-4xl flex flex-col items-center animate-fade-in-up">
-            <div className="w-full flex justify-between items-center px-6 py-4">
+          <div className="bg-white/90 backdrop-blur-2xl p-3 sm:p-4 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-blue-50 w-full max-w-4xl flex flex-col items-center animate-fade-in-up">
+            <div className="w-full flex justify-between items-center px-4 sm:px-6 py-3 sm:py-4">
               <button 
                 onClick={() => setStep('setup')}
                 disabled={isShooting}
-                className="text-slate-400 font-bold hover:text-slate-800 disabled:opacity-50 transition"
+                className="text-slate-400 font-bold hover:text-slate-800 disabled:opacity-50 transition text-sm sm:text-base"
               >
                 ⬅ Back
               </button>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 sm:gap-4">
                 {!isShooting && (
                   <button 
                     onClick={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
-                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition text-lg"
+                    className="p-1.5 sm:p-2 bg-slate-100 hover:bg-slate-200 rounded-full transition text-base sm:text-lg"
                     title="Balik Kamera"
                   >
                     🔄
                   </button>
                 )}
-                <span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full border border-blue-100 uppercase tracking-widest shadow-inner">
+                <span className="hidden sm:inline-block text-[10px] sm:text-xs font-black text-blue-600 bg-blue-50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full border border-blue-100 uppercase tracking-widest shadow-inner">
                   {activeFilter.name}
                 </span>
-                <span className="font-black text-slate-800 bg-slate-100 px-4 py-1.5 rounded-full text-sm">
+                <span className="font-black text-slate-800 bg-slate-100 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm">
                   {photos.length} / {layoutCount}
                 </span>
               </div>
             </div>
 
-            <div className="relative w-full aspect-video bg-black rounded-[1.5rem] overflow-hidden shadow-2xl flex items-center justify-center border-[6px] border-black">
-              {!hasStream && <span className="animate-pulse text-white/50 font-medium">MEMUAT LENSA...</span>}
+            <div className="relative w-full aspect-[4/3] sm:aspect-video bg-black rounded-xl sm:rounded-[1.5rem] overflow-hidden shadow-2xl flex items-center justify-center border-4 sm:border-[6px] border-black">
+              {!hasStream && <span className="animate-pulse text-white/50 font-medium text-xs sm:text-base">MEMUAT LENSA...</span>}
               <video
                 ref={videoRef}
                 autoPlay
@@ -332,7 +365,7 @@ export default function Photobooth() {
               {isFlashing && <div className="absolute inset-0 bg-white z-20 animate-pulse" />}
               {countdown !== null && (
                 <div className="absolute inset-0 flex items-center justify-center z-10 bg-blue-900/30 backdrop-blur-[2px]">
-                  <span className="text-[12rem] font-black text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] animate-bounce">{countdown}</span>
+                  <span className="text-8xl sm:text-[12rem] font-black text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] animate-bounce">{countdown}</span>
                 </div>
               )}
             </div>
@@ -340,58 +373,55 @@ export default function Photobooth() {
             <button 
               onClick={startPhotoshoot}
               disabled={!hasStream || isShooting}
-              className="mt-8 mb-4 w-24 h-24 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:scale-100 rounded-full border-8 border-slate-100 shadow-2xl shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center group relative"
+              className="mt-6 sm:mt-8 mb-2 sm:mb-4 w-20 h-20 sm:w-24 sm:h-24 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:scale-100 rounded-full border-4 sm:border-8 border-slate-100 shadow-2xl shadow-blue-600/30 transition-all hover:scale-105 active:scale-95 flex items-center justify-center group relative"
             >
-              <div className="absolute inset-0 rounded-full border-4 border-transparent group-hover:border-blue-400/50 transition-all scale-110" />
-              <div className="w-14 h-14 rounded-full border-4 border-white/90 group-hover:border-white transition-colors" />
+              <div className="absolute inset-0 rounded-full border-2 sm:border-4 border-transparent group-hover:border-blue-400/50 transition-all scale-110" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 sm:border-4 border-white/90 group-hover:border-white transition-colors" />
             </button>
           </div>
         )}
 
         {/* --- STEP 4: RESULT & EDITOR (ULTIMATE) --- */}
         {step === 'result' && (
-          <div className="flex flex-col lg:flex-row gap-8 w-full justify-center items-start animate-fade-in-up">
+          <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 w-full justify-center items-center lg:items-start animate-fade-in-up">
             
-            {/* Control Panel Kiri */}
-            <div className="bg-white/90 backdrop-blur-2xl p-8 rounded-[2.5rem] shadow-2xl border border-blue-50 flex flex-col gap-6 w-full lg:w-[400px]">
+            {/* Control Panel Kiri - Menyesuaikan Full Width di HP */}
+            <div className="bg-white/90 backdrop-blur-2xl p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-blue-50 flex flex-col gap-5 sm:gap-6 w-full max-w-md lg:max-w-[400px] order-2 lg:order-1">
               
-              {/* Edit Nama/Watermark */}
               <div>
-                <h3 className="font-black text-xs text-blue-600 uppercase tracking-[0.15em] mb-3">Custom Title</h3>
+                <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Custom Title</h3>
                 <input 
                   type="text" 
                   value={customTitle}
                   onChange={(e) => setCustomTitle(e.target.value)}
                   maxLength={15}
                   placeholder="Ketik namamu..."
-                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all uppercase"
+                  className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-bold text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all uppercase"
                 />
               </div>
 
-              {/* Warna Frame */}
               <div>
-                <h3 className="font-black text-xs text-blue-600 uppercase tracking-[0.15em] mb-3">Frame Color</h3>
-                <div className="flex flex-wrap gap-3">
+                <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Frame Color</h3>
+                <div className="flex flex-wrap gap-2 sm:gap-3">
                   {FRAME_COLORS.map((color) => (
                     <button
                       key={color.name}
                       onClick={() => setActiveColor(color)}
-                      className={`w-12 h-12 rounded-full border-4 transition-all hover:scale-110 ${color.tw} ${activeColor.name === color.name ? 'border-slate-900 shadow-xl scale-110' : 'border-slate-200 shadow-sm'}`}
+                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 transition-all hover:scale-110 ${color.tw} ${activeColor.name === color.name ? 'border-slate-900 shadow-xl scale-110' : 'border-slate-200 shadow-sm'}`}
                       title={color.name}
                     />
                   ))}
                 </div>
               </div>
 
-              {/* Tema Stiker */}
               <div>
-                <h3 className="font-black text-xs text-blue-600 uppercase tracking-[0.15em] mb-3">Sticker Pack</h3>
+                <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Sticker Pack</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {STICKER_PACKS.map((pack) => (
                     <button
                       key={pack.name}
                       onClick={() => setActiveSticker(pack)}
-                      className={`py-3 px-2 rounded-xl border-2 text-xs font-bold transition-all ${activeSticker.name === pack.name ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white text-slate-600 hover:border-blue-200'}`}
+                      className={`py-2 sm:py-3 px-2 rounded-xl border-2 text-[10px] sm:text-xs font-bold transition-all ${activeSticker.name === pack.name ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-slate-100 bg-white text-slate-600 hover:border-blue-200'}`}
                     >
                       {pack.name}
                     </button>
@@ -399,25 +429,35 @@ export default function Photobooth() {
                 </div>
               </div>
 
-              <hr className="border-slate-100 my-2" />
+              <hr className="border-slate-100 my-1 sm:my-2" />
 
-              <div className="flex flex-col gap-3">
-                <button 
-                  onClick={downloadPhotostrip}
-                  className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 transition shadow-xl shadow-blue-600/30 flex justify-center items-center gap-2"
-                >
-                  ⬇️ Download HD
-                </button>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-2 sm:gap-3">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <button 
+                    onClick={downloadPhotostrip}
+                    className="w-full py-3 sm:py-4 bg-slate-900 text-white rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm hover:bg-black transition shadow-lg flex justify-center items-center gap-2"
+                  >
+                    ⬇️ Simpan
+                  </button>
+                  <button 
+                    onClick={sharePhotostrip}
+                    disabled={isSharing}
+                    className="w-full py-3 sm:py-4 bg-blue-600 text-white rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm hover:bg-blue-700 transition shadow-lg shadow-blue-600/30 flex justify-center items-center gap-2 disabled:opacity-70"
+                  >
+                    {isSharing ? '⏳ Loading...' : '📤 Share'}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button 
                     onClick={() => { setPhotos([]); setStep('camera'); }}
-                    className="py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition text-sm"
+                    className="py-3 sm:py-4 bg-slate-100 text-slate-700 rounded-xl sm:rounded-2xl font-bold hover:bg-slate-200 transition text-xs sm:text-sm"
                   >
                     🔄 Retake
                   </button>
                   <button 
                     onClick={() => { setPhotos([]); setStep('home'); }}
-                    className="py-4 bg-white border-[3px] border-slate-100 text-slate-600 rounded-2xl font-bold hover:border-slate-300 transition text-sm"
+                    className="py-3 sm:py-4 bg-white border-[3px] border-slate-100 text-slate-600 rounded-xl sm:rounded-2xl font-bold hover:border-slate-300 transition text-xs sm:text-sm"
                   >
                     🏠 Home
                   </button>
@@ -425,33 +465,30 @@ export default function Photobooth() {
               </div>
             </div>
 
-            {/* Live Preview Kanan */}
-            <div className="flex flex-col items-center p-8 bg-white/60 rounded-[2.5rem] border border-white backdrop-blur-xl shadow-2xl relative">
+            {/* Live Preview Kanan - Dibuat Fluid supaya muat di HP kecil */}
+            <div className="flex flex-col items-center p-4 sm:p-8 bg-white/60 rounded-[2rem] sm:rounded-[2.5rem] border border-white backdrop-blur-xl shadow-2xl relative w-full max-w-md lg:max-w-none lg:w-auto order-1 lg:order-2">
               <div 
-                className={`p-4 pb-14 rounded shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-[300px] flex flex-col gap-3 transition-colors duration-700 ease-in-out relative`}
+                className={`p-3 sm:p-4 pb-10 sm:pb-14 rounded shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full max-w-[260px] sm:max-w-[300px] flex flex-col gap-2 sm:gap-3 transition-colors duration-700 ease-in-out relative`}
                 style={{ backgroundColor: activeColor.hex }}
               >
                 {photos.map((src, index) => (
                   <div key={index} className="w-full aspect-video overflow-hidden rounded relative border border-black/10">
                     <img src={src} alt={`shot-${index}`} className="w-full h-full object-cover" />
-                    
-                    {/* Live Preview Sticker di atas foto */}
                     {activeSticker.emojis.length > 0 && (
                       <>
-                        <span className="absolute -left-2 top-2 text-2xl drop-shadow-md">{activeSticker.emojis[index % activeSticker.emojis.length]}</span>
-                        <span className="absolute -right-2 bottom-2 text-2xl drop-shadow-md">{activeSticker.emojis[(index + 1) % activeSticker.emojis.length]}</span>
+                        <span className="absolute -left-1 sm:-left-2 top-1 sm:top-2 text-lg sm:text-2xl drop-shadow-md">{activeSticker.emojis[index % activeSticker.emojis.length]}</span>
+                        <span className="absolute -right-1 sm:-right-2 bottom-1 sm:bottom-2 text-lg sm:text-2xl drop-shadow-md">{activeSticker.emojis[(index + 1) % activeSticker.emojis.length]}</span>
                       </>
                     )}
-
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none" />
                     <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] pointer-events-none" />
                   </div>
                 ))}
-                <div className="mt-5 text-center transition-colors duration-700" style={{ color: activeColor.text }}>
-                  <p className="font-black tracking-[0.2em] text-xl truncate px-2">
+                <div className="mt-3 sm:mt-5 text-center transition-colors duration-700" style={{ color: activeColor.text }}>
+                  <p className="font-black tracking-[0.15em] sm:tracking-[0.2em] text-lg sm:text-xl truncate px-1 sm:px-2">
                     {customTitle.toUpperCase() || 'BLUEBOOTH'}
                   </p>
-                  <p className="text-[10px] opacity-70 mt-1 font-bold tracking-widest">{activeFilter.name.toUpperCase()} • 2026</p>
+                  <p className="text-[8px] sm:text-[10px] opacity-70 mt-1 font-bold tracking-widest">{activeFilter.name.toUpperCase()} • 2026</p>
                 </div>
               </div>
             </div>
