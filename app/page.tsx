@@ -2,12 +2,44 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-// --- CONFIG KUSTOMISASI ---
-const FRAME_COLORS = [
-  { name: 'Electric Blue', hex: '#2563eb', tw: 'bg-blue-600', text: '#ffffff' },
-  { name: 'Mamba Black', hex: '#0f172a', tw: 'bg-slate-900', text: '#ffffff' },
-  { name: 'Earth Cream', hex: '#fef3c7', tw: 'bg-amber-100', text: '#92400e' },
-  { name: 'Clean White', hex: '#ffffff', tw: 'bg-white', text: '#0f172a' },
+// --- CONFIG KUSTOMISASI FRAME (ULTIMATE EDITION) ---
+type FrameStyle = {
+  name: string;
+  type: 'solid' | 'gradient' | 'pattern';
+  hex?: string; 
+  colors?: string[]; 
+  p1?: string; 
+  p2?: string; 
+  text: string;
+  textBg?: string; // Buat background teks biar tetep kebaca kalau pakai motif rame
+};
+
+const FRAME_STYLES: FrameStyle[] = [
+  // 1. SOLID COLORS
+  { name: 'Electric Blue', type: 'solid', hex: '#2563eb', text: '#ffffff' },
+  { name: 'Mamba Black', type: 'solid', hex: '#0f172a', text: '#ffffff' },
+  { name: 'Clean White', type: 'solid', hex: '#ffffff', text: '#0f172a' },
+  { name: 'Coquette Pink', type: 'solid', hex: '#fce7f3', text: '#db2777' },
+  { name: 'Matcha Latte', type: 'solid', hex: '#dcfce7', text: '#15803d' },
+  { name: 'Butter Yellow', type: 'solid', hex: '#fef08a', text: '#854d0e' },
+  
+  // 2. GRADIENT MOTIFS (Y2K Vibes)
+  { name: 'Y2K Aura', type: 'gradient', colors: ['#f472b6', '#fb923c'], text: '#ffffff' },
+  { name: 'Ocean Wave', type: 'gradient', colors: ['#06b6d4', '#3b82f6'], text: '#ffffff' },
+  { name: 'Midnight Dusk', type: 'gradient', colors: ['#312e81', '#9d174d'], text: '#ffffff' },
+  { name: 'Sunset Glow', type: 'gradient', colors: ['#e11d48', '#f59e0b'], text: '#ffffff' },
+
+  // 3. PATTERN MOTIFS (Skena Vibes)
+  { 
+    name: 'Skena Checker', type: 'pattern', 
+    p1: '#ffffff', p2: '#0f172a', // Putih & Hitam
+    text: '#ffffff', textBg: '#0f172a' 
+  },
+  { 
+    name: 'Picnic Gingham', type: 'pattern', 
+    p1: '#fdf2f8', p2: '#f472b6', // Pink Muda & Pink Tua
+    text: '#ffffff', textBg: '#db2777' 
+  }
 ];
 
 const PHOTO_FILTERS = [
@@ -27,6 +59,21 @@ const STICKER_PACKS = [
 type AppStep = 'home' | 'setup' | 'camera' | 'result';
 type CameraFacing = 'user' | 'environment';
 
+// Helper buat nampilin CSS background secara dinamis di UI React
+const getPreviewStyle = (color: FrameStyle) => {
+  if (color.type === 'solid') return { backgroundColor: color.hex };
+  if (color.type === 'gradient' && color.colors) return { background: `linear-gradient(135deg, ${color.colors[0]}, ${color.colors[1]})` };
+  if (color.type === 'pattern' && color.p1 && color.p2) {
+    const c1 = color.p1.replace('#', '%23');
+    const c2 = color.p2.replace('#', '%23');
+    return {
+      backgroundColor: color.p1,
+      backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='${c1}'/%3E%3Cpath d='M0,0 h20 v20 h-20 z M20,20 h20 v20 h-20 z' fill='${c2}'/%3E%3C/svg%3E")`
+    };
+  }
+  return {};
+};
+
 export default function Photobooth() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -39,7 +86,7 @@ export default function Photobooth() {
   const [isFlashing, setIsFlashing] = useState(false);
   
   const [layoutCount, setLayoutCount] = useState<3 | 4>(3);
-  const [activeColor, setActiveColor] = useState(FRAME_COLORS[0]);
+  const [activeColor, setActiveColor] = useState<FrameStyle>(FRAME_STYLES[0]);
   const [activeFilter, setActiveFilter] = useState(PHOTO_FILTERS[0]);
   const [activeSticker, setActiveSticker] = useState(STICKER_PACKS[0]);
   const [customTitle, setCustomTitle] = useState('BLUEBOOTH');
@@ -140,6 +187,7 @@ export default function Photobooth() {
     setStep('result');
   };
 
+  // Logic Nge-gambar Final buat Download/Share
   const drawFinalCanvas = async (): Promise<HTMLCanvasElement | null> => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -148,14 +196,41 @@ export default function Photobooth() {
     const imgWidth = 1280; 
     const imgHeight = 720;
     const padding = 60;
-    const bottomSpace = 300; 
+    const bottomSpace = 320; 
 
     canvas.width = imgWidth + (padding * 2);
     canvas.height = (imgHeight * photos.length) + (padding * (photos.length + 1)) + bottomSpace;
 
-    ctx.fillStyle = activeColor.hex;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 1. GAMBAR BACKGROUND FRAME (Solid / Gradient / Motif)
+    if (activeColor.type === 'solid' && activeColor.hex) {
+      ctx.fillStyle = activeColor.hex;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } 
+    else if (activeColor.type === 'gradient' && activeColor.colors) {
+      const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+      grad.addColorStop(0, activeColor.colors[0]);
+      grad.addColorStop(1, activeColor.colors[1]);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    } 
+    else if (activeColor.type === 'pattern' && activeColor.p1 && activeColor.p2) {
+      // Bikin motif papan catur virtual
+      const pCanv = document.createElement('canvas');
+      pCanv.width = 100; pCanv.height = 100;
+      const pCtx = pCanv.getContext('2d');
+      if (pCtx) {
+        pCtx.fillStyle = activeColor.p1;
+        pCtx.fillRect(0, 0, 100, 100);
+        pCtx.fillStyle = activeColor.p2;
+        pCtx.fillRect(0, 0, 50, 50);
+        pCtx.fillRect(50, 50, 50, 50);
+        const pattern = ctx.createPattern(pCanv, 'repeat');
+        ctx.fillStyle = pattern || activeColor.p1;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    }
 
+    // 2. TEMPEL FOTO
     const loadImg = (src: string) => {
       return new Promise<HTMLImageElement>((resolve) => {
         const img = new Image();
@@ -170,28 +245,44 @@ export default function Photobooth() {
       const yPos = padding + (index * (imgHeight + padding));
       ctx.drawImage(img, padding, yPos, imgWidth, imgHeight);
       
+      // Border tipis di setiap foto
       ctx.strokeStyle = activeColor.text;
       ctx.globalAlpha = 0.15;
-      ctx.lineWidth = 4;
+      ctx.lineWidth = 6;
       ctx.strokeRect(padding, yPos, imgWidth, imgHeight);
       ctx.globalAlpha = 1.0;
 
+      // Stiker Kiri Kanan
       if (activeSticker.emojis.length > 0) {
-        ctx.font = '80px Arial';
+        ctx.font = '90px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(activeSticker.emojis[index % activeSticker.emojis.length], padding / 2, yPos + 100);
-        ctx.fillText(activeSticker.emojis[(index + 1) % activeSticker.emojis.length], canvas.width - (padding / 2), yPos + imgHeight - 100);
+        ctx.fillText(activeSticker.emojis[index % activeSticker.emojis.length], padding / 2, yPos + 120);
+        ctx.fillText(activeSticker.emojis[(index + 1) % activeSticker.emojis.length], canvas.width - (padding / 2), yPos + imgHeight - 120);
       }
     });
 
+    // 3. TAMBAH BACKGROUND TEKS (Khusus kalau framenya motif biar kebaca)
+    if (activeColor.textBg) {
+      ctx.fillStyle = activeColor.textBg;
+      ctx.globalAlpha = 0.95;
+      const boxHeight = 180;
+      const boxY = canvas.height - bottomSpace + 60;
+      // Bikin rounded rectangle custom
+      ctx.beginPath();
+      ctx.roundRect(padding, boxY, canvas.width - (padding * 2), boxHeight, 20);
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+    }
+
+    // 4. TEMPEL TEKS WATERMARK
     ctx.fillStyle = activeColor.text;
-    ctx.font = 'bold 80px "Inter", sans-serif';
+    ctx.font = 'bold 90px "Inter", sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(customTitle.toUpperCase() || 'BLUEBOOTH', canvas.width / 2, canvas.height - 150);
 
-    ctx.globalAlpha = 0.6;
+    ctx.globalAlpha = 0.7;
     ctx.font = 'bold 40px "Inter", sans-serif';
-    ctx.fillText('2026', canvas.width / 2, canvas.height - 80);
+    ctx.fillText('EST. 2026', canvas.width / 2, canvas.height - 80);
     ctx.globalAlpha = 1.0;
 
     return canvas;
@@ -219,7 +310,7 @@ export default function Photobooth() {
         if (navigator.share) {
           await navigator.share({
             title: 'My Photostrip',
-            text: 'Hasil BlueBooth! ✨',
+            text: 'Cekrak cekrek pake BlueBooth! ✨',
             files: [file],
           });
         } else {
@@ -236,25 +327,21 @@ export default function Photobooth() {
   return (
     <main className="min-h-[100dvh] bg-white flex flex-col items-center justify-center p-4 sm:p-6 font-sans text-slate-900 transition-colors duration-500 overflow-x-hidden relative selection:bg-blue-600 selection:text-white">
       
-      {/* Background Ornamen Tetap Responsif */}
+      {/* Background Ornamen */}
       <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-blue-600 rounded-full filter blur-[80px] md:blur-[120px] opacity-20 animate-pulse pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[60vw] h-[60vw] md:w-[40vw] md:h-[40vw] bg-indigo-600 rounded-full filter blur-[80px] md:blur-[120px] opacity-20 pointer-events-none" />
 
-      {/* Header Mobile - Menyesuaikan margin */}
       {step !== 'home' && (
         <div className="absolute top-4 sm:top-6 w-full text-center z-10">
           <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">BLUEBOOTH<span className="text-blue-600">.</span></h1>
         </div>
       )}
 
-      {/* Kontainer Utama - Responsive margin-top */}
       <div className="w-full max-w-6xl flex justify-center items-center mt-12 sm:mt-16 z-10">
         
         {/* --- STEP 1: HOME --- */}
         {step === 'home' && (
           <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-16 w-full animate-fade-in-up backdrop-blur-md p-6 sm:p-12 rounded-[2rem] sm:rounded-[3rem] border border-white/50 shadow-2xl bg-white/40">
-            
-            {/* Bagian Kiri: Teks & Tombol */}
             <div className="text-center lg:text-left flex flex-col items-center lg:items-start w-full lg:w-1/2">
               <div className="inline-block px-4 py-1.5 sm:px-5 sm:py-2 mb-4 sm:mb-6 rounded-full bg-blue-600 text-white font-black text-[10px] sm:text-xs tracking-[0.1em] sm:tracking-[0.2em] shadow-lg shadow-blue-600/30 uppercase">
                 @hadistyyy || on insta
@@ -272,27 +359,18 @@ export default function Photobooth() {
                 Start Session 📸
               </button>
             </div>
-
-            {/* Bagian Kanan: Showcase Gambar Lu */}
             <div className="relative flex justify-center w-full lg:w-1/2 mt-8 lg:mt-0">
               <div className="absolute inset-0 bg-blue-500/20 rounded-2xl blur-2xl transform rotate-6 scale-105"></div>
-              
               <div className="relative group">
                 <img 
                   src="/jaki.jpeg" 
                   alt="Hasil BlueBooth" 
                   className="w-[240px] sm:w-[320px] rounded-xl sm:rounded-2xl shadow-2xl transform -rotate-3 group-hover:rotate-0 transition-transform duration-500 border-[6px] border-slate-900"
                 />
-                
-                <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 text-4xl sm:text-5xl animate-bounce drop-shadow-lg">
-                  ✨
-                </div>
-                <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 text-3xl sm:text-4xl drop-shadow-lg rotate-12">
-                  🎀
-                </div>
+                <div className="absolute -bottom-4 -right-4 sm:-bottom-6 sm:-right-6 text-4xl sm:text-5xl animate-bounce drop-shadow-lg">✨</div>
+                <div className="absolute -top-4 -left-4 sm:-top-6 sm:-left-6 text-3xl sm:text-4xl drop-shadow-lg rotate-12">🎀</div>
               </div>
             </div>
-
           </div>
         )}
 
@@ -303,7 +381,6 @@ export default function Photobooth() {
             
             <div className="mb-6 sm:mb-8">
               <span className="block text-[10px] sm:text-xs font-black text-blue-600 mb-3 sm:mb-4 uppercase tracking-[0.15em] text-center sm:text-left">1. Pilih Layout</span>
-              {/* Layout Button dibuat tumpuk di HP super kecil, jejer di tablet */}
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
                 {[3, 4].map((num) => (
                   <button 
@@ -405,12 +482,12 @@ export default function Photobooth() {
           </div>
         )}
 
-        {/* --- STEP 4: RESULT & EDITOR (ULTIMATE) --- */}
+        {/* --- STEP 4: RESULT & EDITOR (ULTIMATE MOTIF EDITION) --- */}
         {step === 'result' && (
           <div className="flex flex-col lg:flex-row gap-6 sm:gap-8 w-full justify-center items-center lg:items-start animate-fade-in-up">
             
-            {/* Control Panel Kiri - Menyesuaikan Full Width di HP */}
-            <div className="bg-white/90 backdrop-blur-2xl p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-blue-50 flex flex-col gap-5 sm:gap-6 w-full max-w-md lg:max-w-[400px] order-2 lg:order-1">
+            {/* Control Panel Kiri */}
+            <div className="bg-white/90 backdrop-blur-2xl p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-blue-50 flex flex-col gap-5 sm:gap-6 w-full max-w-md lg:max-w-[420px] order-2 lg:order-1">
               
               <div>
                 <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Custom Title</h3>
@@ -425,13 +502,14 @@ export default function Photobooth() {
               </div>
 
               <div>
-                <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Frame Color</h3>
+                <h3 className="font-black text-[10px] sm:text-xs text-blue-600 uppercase tracking-[0.15em] mb-2 sm:mb-3">Frame Motif & Color</h3>
                 <div className="flex flex-wrap gap-2 sm:gap-3">
-                  {FRAME_COLORS.map((color) => (
+                  {FRAME_STYLES.map((color) => (
                     <button
                       key={color.name}
                       onClick={() => setActiveColor(color)}
-                      className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 transition-all hover:scale-110 ${color.tw} ${activeColor.name === color.name ? 'border-slate-900 shadow-xl scale-110' : 'border-slate-200 shadow-sm'}`}
+                      style={getPreviewStyle(color)}
+                      className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full border-2 transition-all hover:scale-110 ${activeColor.name === color.name ? 'ring-4 ring-blue-500 ring-offset-2 border-transparent scale-110 shadow-lg' : 'border-slate-200 shadow-sm'}`}
                       title={color.name}
                     />
                   ))}
@@ -489,14 +567,14 @@ export default function Photobooth() {
               </div>
             </div>
 
-            {/* Live Preview Kanan - Dibuat Fluid supaya muat di HP kecil */}
+            {/* Live Preview Kanan */}
             <div className="flex flex-col items-center p-4 sm:p-8 bg-white/60 rounded-[2rem] sm:rounded-[2.5rem] border border-white backdrop-blur-xl shadow-2xl relative w-full max-w-md lg:max-w-none lg:w-auto order-1 lg:order-2">
               <div 
-                className={`p-3 sm:p-4 pb-10 sm:pb-14 rounded shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full max-w-[260px] sm:max-w-[300px] flex flex-col gap-2 sm:gap-3 transition-colors duration-700 ease-in-out relative`}
-                style={{ backgroundColor: activeColor.hex }}
+                className="p-3 sm:p-4 pb-10 sm:pb-14 rounded shadow-[0_20px_50px_rgba(0,0,0,0.2)] w-full max-w-[260px] sm:max-w-[300px] flex flex-col gap-2 sm:gap-3 transition-all duration-700 ease-in-out relative"
+                style={getPreviewStyle(activeColor)}
               >
                 {photos.map((src, index) => (
-                  <div key={index} className="w-full aspect-video overflow-hidden rounded relative border border-black/10">
+                  <div key={index} className="w-full aspect-video overflow-hidden rounded relative border border-black/10 z-10">
                     <img src={src} alt={`shot-${index}`} className="w-full h-full object-cover" />
                     {activeSticker.emojis.length > 0 && (
                       <>
@@ -508,7 +586,13 @@ export default function Photobooth() {
                     <div className="absolute inset-0 shadow-[inset_0_0_15px_rgba(0,0,0,0.2)] pointer-events-none" />
                   </div>
                 ))}
-                <div className="mt-3 sm:mt-5 text-center transition-colors duration-700" style={{ color: activeColor.text }}>
+                
+                {/* Text Background (Biar teks tetep kebaca kalau frame motifnya rame) */}
+                {activeColor.textBg && (
+                  <div className="absolute bottom-2 left-2 right-2 h-[80px] sm:h-[110px] rounded-lg z-0 opacity-95 transition-colors duration-500" style={{ backgroundColor: activeColor.textBg }}></div>
+                )}
+                
+                <div className="mt-3 sm:mt-5 text-center transition-colors duration-700 relative z-10" style={{ color: activeColor.text }}>
                   <p className="font-black tracking-[0.15em] sm:tracking-[0.2em] text-lg sm:text-xl truncate px-1 sm:px-2">
                     {customTitle.toUpperCase() || 'BLUEBOOTH'}
                   </p>
