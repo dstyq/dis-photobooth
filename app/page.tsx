@@ -396,7 +396,7 @@ export default function Photobooth() {
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 w-full animate-fade-in-up bg-white p-6 sm:p-10 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000] sm:shadow-[15px_15px_0px_#000]">
             <div className="w-full lg:w-1/2 flex flex-col gap-6">
               <h2 className="text-4xl sm:text-6xl font-black uppercase drop-shadow-[2px_2px_0px_#f472b6]">Say Hi!</h2>
-              <p className="text-sm sm:text-lg font-bold">lagi bosen parah aja sih makanya bikin ginian wkwk. kalo mau sksd, nanya nanya, atau ngirim yappingan, ketik aja di bawah!</p>
+              <p className="text-sm sm:text-lg font-bold">lagi gbut parah aja makanya bikin ginian wkwk. kalo mau sksd, nanya nanya, atau ngirim yappingan, ketik aja di bawah!</p>
               
               <div className="flex flex-col gap-4">
                 <input 
