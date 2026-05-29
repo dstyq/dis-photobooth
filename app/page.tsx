@@ -362,7 +362,7 @@ export default function Photobooth() {
               </div>
             </div>
             <div className="w-full lg:w-1/2 flex justify-center mt-6 lg:mt-0">
-              <img src="/jaki.jpeg" alt="Creator" className="w-[200px] sm:w-[280px] object-cover bg-white p-3 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#f472b6] transform rotate-2 hover:rotate-0 transition-transform" />
+              <img src="/.jpeg" alt="Creator" className="w-[200px] sm:w-[280px] object-cover bg-white p-3 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#f472b6] transform rotate-2 hover:rotate-0 transition-transform" />
             </div>
           </div>
         )}
