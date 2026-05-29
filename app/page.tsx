@@ -17,7 +17,6 @@ export default function Photobooth() {
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isShooting, setIsShooting] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
-  const [isCreatingGif, setIsCreatingGif] = useState(false);
   
   const [layoutType, setLayoutType] = useState<LayoutOption>('3');
   const [activeColor, setActiveColor] = useState<FrameStyle>(FRAME_STYLES[0]);
@@ -29,6 +28,7 @@ export default function Photobooth() {
   
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
+  // --- STATE HALAMAN KONTAK ---
   const [contactName, setContactName] = useState('');
   const [contactMsg, setContactMsg] = useState('');
 
@@ -258,131 +258,6 @@ export default function Photobooth() {
     link.click();
   };
 
-  // --- LOGIKA BIKIN GIF VIA CLOUD SCRIPT (ANTI MODULE ERROR) ---
-  const downloadGif = async () => {
-    if (photos.length === 0) return;
-    setIsCreatingGif(true);
-
-    try {
-      // 1. Suntik script gifshot dari CDN kalau belum ada
-      if (!(window as any).gifshot) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js';
-          script.onload = resolve;
-          script.onerror = reject;
-          document.body.appendChild(script);
-        });
-      }
-
-      const gifshot = (window as any).gifshot;
-
-      if (!gifshot) {
-        throw new Error("Gagal load library GIF dari internet.");
-      }
-
-      const imgWidth = 640; 
-      const imgHeight = 480;
-      const padding = 40;
-      const bottomSpace = 160; 
-
-      const canvas = document.createElement('canvas');
-      canvas.width = imgWidth + (padding * 2);
-      canvas.height = imgHeight + padding + bottomSpace;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error("Gagal membuat virtual canvas.");
-
-      const loadImg = (src: string, isCors = false) => {
-        return new Promise<HTMLImageElement>((resolve) => {
-          const img = new Image();
-          if (isCors) img.crossOrigin = "anonymous"; 
-          img.src = src;
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(img); 
-        });
-      };
-
-      const loadedImages = await Promise.all(photos.map(src => loadImg(src)));
-      let loadedStickers: HTMLImageElement[] = [];
-      
-      if (activeSticker.images.length > 0) {
-        loadedStickers = await Promise.all(activeSticker.images.map(url => loadImg(url, true)));
-      }
-
-      const frames: string[] = [];
-
-      for (let i = 0; i < loadedImages.length; i++) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        activeColor.renderCanvas(ctx, canvas.width, canvas.height);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 16; 
-        ctx.strokeRect(0, 0, canvas.width, canvas.height);
-
-        const xPos = padding;
-        const yPos = padding;
-
-        ctx.drawImage(loadedImages[i], xPos, yPos, imgWidth, imgHeight);
-        ctx.strokeStyle = '#000000';
-        ctx.lineWidth = 10;
-        ctx.strokeRect(xPos, yPos, imgWidth, imgHeight);
-
-        if (loadedStickers.length > 0) {
-          const stickerSize = 100; 
-          const s1 = loadedStickers[i % loadedStickers.length];
-          const s2 = loadedStickers[(i + 1) % loadedStickers.length];
-          if(s1 && s1.width) ctx.drawImage(s1, xPos + 40, yPos + imgHeight - stickerSize - 20, stickerSize, stickerSize);
-          if(s2 && s2.width) ctx.drawImage(s2, xPos + imgWidth - stickerSize - 40, yPos + 20, stickerSize, stickerSize);
-        }
-
-        if (activeColor.textBg) {
-          ctx.fillStyle = activeColor.textBg;
-          ctx.strokeStyle = '#000000';
-          ctx.lineWidth = 8;
-          const boxHeight = 100;
-          const boxY = canvas.height - bottomSpace + 30;
-          ctx.beginPath();
-          ctx.rect(padding, boxY, canvas.width - (padding * 2), boxHeight);
-          ctx.fill();
-          ctx.stroke(); 
-        }
-
-        ctx.fillStyle = activeColor.text;
-        ctx.font = '900 50px "Arial", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(customTitle.toUpperCase() || 'BLUEBOOTH', canvas.width / 2, canvas.height - 65);
-
-        ctx.font = 'bold 25px "Arial", sans-serif';
-        ctx.fillText('EST. 2026', canvas.width / 2, canvas.height - 25);
-
-        frames.push(canvas.toDataURL('image/jpeg', 0.8));
-      }
-
-      gifshot.createGIF({
-        images: frames,
-        gifWidth: canvas.width,
-        gifHeight: canvas.height,
-        interval: 0.4, 
-        numFrames: frames.length,
-        sampleInterval: 10,
-      }, (obj: any) => {
-        if (!obj.error) {
-          const link = document.createElement('a');
-          link.download = `${customTitle || 'bluebooth'}-${Date.now()}.gif`;
-          link.href = obj.image;
-          link.click();
-        } else {
-          alert('Gagal jahit animasi GIF: ' + obj.errorMsg);
-        }
-        setIsCreatingGif(false);
-      });
-
-    } catch (error: any) {
-      alert("Error sistem GIF: " + error.message);
-      setIsCreatingGif(false);
-    }
-  };
-
   const sharePhotostrip = async () => {
     setIsSharing(true);
     try {
@@ -410,6 +285,7 @@ export default function Photobooth() {
     }
   };
 
+  // --- LOGIKA KIRIM EMAIL (MAILTO) ---
   const sendEmail = () => {
     if (!contactName || !contactMsg) {
       alert('Isi dulu dong Nama sama Pesannya!');
@@ -471,35 +347,37 @@ export default function Photobooth() {
           </div>
         )}
 
-        {/* --- PAGE: ABOUT --- */}
+        {/* --- PAGE: ABOUT (SANTAI ALA ANAK KULIAHAN) --- */}
         {step === 'about' && (
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 w-full animate-fade-in-up bg-white p-6 sm:p-10 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000] sm:shadow-[15px_15px_0px_#000]">
             <div className="w-full lg:w-1/2 flex flex-col gap-4">
-              <h2 className="text-4xl sm:text-6xl font-black uppercase drop-shadow-[2px_2px_0px_#3b82f6]">About The Creator</h2>
+              <h2 className="text-4xl sm:text-6xl font-black uppercase drop-shadow-[2px_2px_0px_#3b82f6]">About</h2>
               <div className="bg-pink-100 p-4 sm:p-6 border-4 border-black shadow-[4px_4px_0px_#000]">
                 <p className="text-sm sm:text-lg font-bold mb-4 leading-relaxed">
-                  Halo! Kenalin gw Hadisty, mahasiswi PTIK UNJ yang kadang suka gabut wkwk. 
+                  hii, kenalin my gwhj aku saya hadisty/disy/disty/disya/quro dll bebas dah asal jgn manggil R....awr aja
                 </p>
                 <p className="text-sm sm:text-lg font-bold leading-relaxed">
-                  Aslinya project <strong>BlueBooth</strong> ini buat menuhin tugas kuliah web dev aja sih, tapi sekalian aja gw bikin gaya Neo-Brutalism/Comic gini biar estetik dan nggak ngebosenin kek web tugas pada umumnya. Feel free buat cekrak-cekrek di sini!
+                  Aslinya project <strong>BlueBooth</strong> ini fomo aja sih, themanya Neo-Brutalism/Comic gini biar kalcer dan ga ngebosenin(kaya kalian). Feel free buat cekrak-cekrek di sini tapi kalo ketemu aku palak!
                 </p>
               </div>
             </div>
             <div className="w-full lg:w-1/2 flex justify-center mt-6 lg:mt-0">
-              <img src="/jaki.jpeg" alt="Creator" className="w-[200px] sm:w-[280px] object-cover bg-white p-3 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#f472b6] transform rotate-2 hover:rotate-0 transition-transform" />
+              <img src="/iya.jpeg" alt="Creator" className="w-[200px] sm:w-[280px] object-cover bg-white p-3 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#f472b6] transform rotate-2 hover:rotate-0 transition-transform" />
             </div>
           </div>
         )}
 
-        {/* --- PAGE: SPOTLIGHT --- */}
+{/* --- PAGE: SPOTLIGHT --- */}
         {step === 'spotlight' && (
           <div className="flex flex-col items-center w-full animate-fade-in-up bg-white p-6 sm:p-10 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000] sm:shadow-[15px_15px_0px_#000]">
             <h2 className="text-4xl sm:text-6xl font-black uppercase drop-shadow-[2px_2px_0px_#eab308] mb-8 text-center">Hall of Fame</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full">
+              
+              {/* ARRAY DATA FOTO BERBEDA */}
               {[
-                { id: 1, src: '/jaki.jpeg', name: 'GUEST #1' },
+                { id: 1, src: '/jaki.jpeg', name: 'jaki #1' },
                 { id: 2, src: '/foto2.jpeg', name: 'GUEST #2' },
-                { id: 3, src: '/foto3.jpeg', name: 'GUEST #3' }
+                { id: 3, src: '/disnifat.png', name: 'org keren #3' }
               ].map((item) => (
                 <div key={item.id} className="flex flex-col items-center gap-2">
                   <div className="bg-white p-3 border-4 sm:border-8 border-black shadow-[6px_6px_0px_#3b82f6] transform hover:-translate-y-2 transition-transform">
@@ -508,29 +386,30 @@ export default function Photobooth() {
                   </div>
                 </div>
               ))}
+
             </div>
           </div>
         )}
 
-        {/* --- PAGE: CONTACT --- */}
+        {/* --- PAGE: CONTACT (TAMBAH TIKTOK & X) --- */}
         {step === 'contact' && (
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8 w-full animate-fade-in-up bg-white p-6 sm:p-10 border-4 sm:border-8 border-black shadow-[8px_8px_0px_#000] sm:shadow-[15px_15px_0px_#000]">
             <div className="w-full lg:w-1/2 flex flex-col gap-6">
               <h2 className="text-4xl sm:text-6xl font-black uppercase drop-shadow-[2px_2px_0px_#f472b6]">Say Hi!</h2>
-              <p className="text-sm sm:text-lg font-bold">Lagi gabut parah aja sih makanya iseng bikin ginian wkwk. Kalau mau iseng nyapa, nanya-nanya tugas, atau ngirim pesan random, ketik aja di bawah!</p>
+              <p className="text-sm sm:text-lg font-bold">lagi bosen parah aja sih makanya bikin ginian wkwk. kalo mau sksd, nanya nanya, atau ngirim yappingan, ketik aja di bawah!</p>
               
               <div className="flex flex-col gap-4">
                 <input 
                   type="text" 
                   value={contactName}
                   onChange={(e) => setContactName(e.target.value)}
-                  placeholder="NAMA LU..." 
+                  placeholder="NAMA..." 
                   className="w-full bg-blue-50 border-4 border-black px-4 py-3 font-black focus:outline-none focus:bg-yellow-50 uppercase" 
                 />
                 <textarea 
                   value={contactMsg}
                   onChange={(e) => setContactMsg(e.target.value)}
-                  placeholder="PESAN ISENG LU..." 
+                  placeholder="PESAN..." 
                   rows={4} 
                   className="w-full bg-blue-50 border-4 border-black px-4 py-3 font-black focus:outline-none focus:bg-yellow-50 uppercase resize-none"
                 ></textarea>
@@ -547,13 +426,13 @@ export default function Photobooth() {
             <div className="w-full lg:w-1/2 flex flex-col items-center justify-center gap-4 bg-yellow-400 p-8 border-4 border-black shadow-[8px_8px_0px_#000] transform rotate-1">
               <h3 className="font-black text-2xl uppercase mb-2">Or Stalk My Socials</h3>
               <a href="https://instagram.com/hadistyyy" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                📸 IG: @hadistyyy
+                IG: @hadistyyy
               </a>
-              <a href="https://tiktok.com/@hdstyn" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                🎵 TikTok: @hdstyn
+              <a href="https://tiktok.com/@disyarratu" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
+                TikTok: @hdstyn
               </a>
-              <a href="https://x.com/hdstyn" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                🐦 X: @hdstyn
+              <a href="https://x.com/disyyAp" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
+                X: @disyyAp
               </a>
             </div>
           </div>
@@ -753,24 +632,23 @@ export default function Photobooth() {
                     onClick={downloadPhotostrip}
                     className="w-full py-3 sm:py-4 bg-blue-600 text-white border-2 sm:border-4 border-black font-black text-[10px] sm:text-xs uppercase shadow-[2px_2px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex justify-center items-center gap-1"
                   >
-                    ⬇️ JPG
+                    ⬇️ Simpan
                   </button>
-                  <button 
-                    onClick={downloadGif}
-                    disabled={isCreatingGif}
-                    className="w-full py-3 sm:py-4 bg-purple-500 text-white border-2 sm:border-4 border-black font-black text-[10px] sm:text-xs uppercase shadow-[2px_2px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex justify-center items-center gap-1 disabled:opacity-50"
-                  >
-                    {isCreatingGif ? '⏳ Proses...' : '🎞️ GIF'}
-                  </button>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <button 
                     onClick={sharePhotostrip}
                     disabled={isSharing}
                     className="w-full py-3 sm:py-4 bg-pink-500 text-white border-2 sm:border-4 border-black font-black text-[10px] sm:text-xs uppercase shadow-[2px_2px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex justify-center items-center gap-1 disabled:opacity-50"
                   >
-                    📤 Share
+                    {isSharing ? '⏳ Loading...' : '📤 Share'}
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <button 
+                    onClick={() => { setPhotos([]); setStep('camera'); setRetakeIndex(null); }}
+                    className="py-3 sm:py-4 bg-white text-black border-2 sm:border-4 border-black font-black uppercase shadow-[2px_2px_0px_#000] sm:shadow-[4px_4px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all text-[10px] sm:text-xs"
+                  >
+                    🔄 Retake Semua
                   </button>
                   <button 
                     onClick={() => { setPhotos([]); setStep('home'); setRetakeIndex(null); }}
@@ -793,7 +671,7 @@ export default function Photobooth() {
                 style={activeColor.type === 'solid' ? { backgroundColor: activeColor.hex } : activeColor.bgStyle}
               >
                 {activeColor.type === 'theme' && (
-                   <div className="absolute inset-0 z-0" style={activeColor.bgStyle ? activeColor.bgStyle : {}}></div>
+                   <div className="absolute inset-0 z-0" style={{cssText: activeColor.bgStyle} as React.CSSProperties}></div>
                 )}
 
                 {photos.map((src, index) => (
