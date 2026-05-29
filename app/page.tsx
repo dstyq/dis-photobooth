@@ -426,13 +426,13 @@ export default function Photobooth() {
             <div className="w-full lg:w-1/2 flex flex-col items-center justify-center gap-4 bg-yellow-400 p-8 border-4 border-black shadow-[8px_8px_0px_#000] transform rotate-1">
               <h3 className="font-black text-2xl uppercase mb-2">Or Stalk My Socials</h3>
               <a href="https://instagram.com/hadistyyy" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                📸 IG: @hadistyyy
+                IG: @hadistyyy
               </a>
               <a href="https://tiktok.com/@disyarratu" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                🎵 TikTok: @hdstyn
+                TikTok: @hdstyn
               </a>
               <a href="https://x.com/disyyAp" target="_blank" rel="noreferrer" className="w-full text-center bg-white px-6 py-3 border-4 border-black font-black uppercase shadow-[4px_4px_0px_#000] hover:-translate-y-1 transition-transform">
-                🐦 X: @disyyAp
+                X: @disyyAp
               </a>
             </div>
           </div>
